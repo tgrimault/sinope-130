@@ -72,6 +72,7 @@ from .const import (
     ATTR_CONTROLLED_DEVICE,
     ATTR_COOL_SETPOINT_MIN,
     ATTR_COOL_SETPOINT_MAX,
+    ATTR_MODE,
     MODE_AWAY,
     MODE_HOME,
     MODE_MANUAL,
@@ -90,6 +91,7 @@ LOGIN_URL = "{}/api/login".format(HOST)
 LOCATIONS_URL = "{}/api/locations?account$id=".format(HOST)
 GATEWAY_DEVICE_URL = "{}/api/devices?location$id=".format(HOST)
 DEVICE_DATA_URL = "{}/api/device/".format(HOST)
+GATEWAY_DATA_URL = "{}/api/location/".format(HOST)
 
 CONFIG_SCHEMA = vol.Schema({
     DOMAIN: vol.Schema({
@@ -423,6 +425,23 @@ class Neviweb130Client(object):
         _LOGGER.debug("Error code status data: %s", data)
         return None
 
+    def set_occupancy_mode(self,mode):
+        """Set Neviweb global occupancy mode, away or home"""
+        data = {ATTR_MODE: mode}
+        try:
+            raw_res = requests.get(GATEWAY_DATA_URL + str(self._gateway_id) +
+                "/data", headers=self._headers, cookies=self._cookies,
+                timeout=self._timeout)
+            _LOGGER.debug("Set global occupancy: %s", raw_res.json())
+        except requests.exceptions.ReadTimeout:
+            return {"errorCode": "ReadTimeout"}
+        except Exception as e:
+            raise PyNeviweb130Error("Cannot set global occupancy mode", e)
+            return None
+        # Update cookies
+        self._cookies.update(raw_res.cookies)
+        return None
+
     def set_brightness(self, device_id, brightness):
         """Set device brightness."""
         data = {ATTR_INTENSITY: brightness}
@@ -448,6 +467,7 @@ class Neviweb130Client(object):
         """ Work differently for wifi and zigbee devices. """
         if mode in [PRESET_AWAY, PRESET_HOME]:
             data = {ATTR_OCCUPANCY: mode}
+            self.set_occupancy_mode(mode)
         elif wifi:
             if mode in [HVAC_MODE_HEAT, MODE_MANUAL]:
                 mode = MODE_MANUAL

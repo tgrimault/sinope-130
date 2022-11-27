@@ -7,6 +7,7 @@ CONF_HOMEKIT_MODE = 'homekit_mode'
 ATTR_ALERT = "alert"
 ATTR_SIGNATURE = "signature"
 ATTR_POWER_MODE = "powerMode"
+ATTR_MODE = "mode"
 ATTR_ONOFF = "onOff"
 ATTR_ONOFF2 = "onOff2"
 ATTR_INTENSITY = "intensity"

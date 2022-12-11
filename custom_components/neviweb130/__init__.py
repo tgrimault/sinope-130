@@ -425,14 +425,17 @@ class Neviweb130Client(object):
         _LOGGER.debug("Error code status data: %s", data)
         return None
 
-    def set_occupancy_mode(self,mode):
-        """Set Neviweb global occupancy mode, away or home"""
-        data = {ATTR_MODE: mode}
+    def set_occupancy_mode(self, mode):
+        """Set Neviweb global occupancy mode, away or home for GT130 network"""
+        #data = {ATTR_MODE: mode}
+        _LOGGER.debug("Occupancy data mode = %s", mode)
         try:
-            raw_res = requests.get(GATEWAY_DATA_URL + str(self._gateway_id) +
-                "/data", headers=self._headers, cookies=self._cookies,
+            raw_res = requests.put(GATEWAY_DATA_URL + str(self._gateway_id) +
+                "/mode", json=mode, headers=self._headers, cookies=self._cookies,
                 timeout=self._timeout)
-            _LOGGER.debug("Set global occupancy: %s", raw_res.json())
+            #_LOGGER.debug("Set global occupancy: %s", raw_res.json())
+            _LOGGER.debug("envoi put: %s", GATEWAY_DATA_URL + str(self._gateway_id) + "/mode")
+            _LOGGER.debug("retour put: %s",raw_res.content)
         except requests.exceptions.ReadTimeout:
             return {"errorCode": "ReadTimeout"}
         except Exception as e:
@@ -467,6 +470,7 @@ class Neviweb130Client(object):
         """ Work differently for wifi and zigbee devices. """
         if mode in [PRESET_AWAY, PRESET_HOME]:
             data = {ATTR_OCCUPANCY: mode}
+            mode = {ATTR_MODE: mode}
             self.set_occupancy_mode(mode)
         elif wifi:
             if mode in [HVAC_MODE_HEAT, MODE_MANUAL]:

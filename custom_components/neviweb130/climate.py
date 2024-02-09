@@ -2330,15 +2330,92 @@ class Neviweb130LowWifiThermostat(Neviweb130WifiThermostat):
 
     def update_locals(self, device_data):
         super().update_locals(device_data)
+        self._cur_temp_before = self._cur_temp
+        self._cur_temp = float(device_data[ATTR_ROOM_TEMPERATURE]["value"]) if \
+            device_data[ATTR_ROOM_TEMPERATURE]["value"] != None else self._cur_temp_before
+        self._target_temp = float(device_data[ATTR_ROOM_SETPOINT])
+        self._min_temp = device_data[ATTR_ROOM_SETPOINT_MIN]
+        self._max_temp = device_data[ATTR_ROOM_SETPOINT_MAX]
+        self._temperature_format = device_data[ATTR_TEMP]
+        self._time_format = device_data[ATTR_TIME]
+        self._temp_display_value = device_data[ATTR_ROOM_TEMP_DISPLAY]["value"]
+        self._temp_display_status = device_data[ATTR_ROOM_TEMP_DISPLAY]["status"]
+        self._display2 = device_data[ATTR_DISPLAY2]
+        if ATTR_DRSETPOINT in device_data:
+            self._drsetpoint_status = device_data[ATTR_DRSETPOINT]["status"]
+            self._drsetpoint_value = device_data[ATTR_DRSETPOINT]["value"] if \
+                device_data[ATTR_DRSETPOINT]["value"] != None else 0
+        if ATTR_DRSTATUS in device_data:
+            self._drstatus_active = device_data[ATTR_DRSTATUS]["drActive"]
+            self._drstatus_optout = device_data[ATTR_DRSTATUS]["optOut"]
+            self._drstatus_setpoint = device_data[ATTR_DRSTATUS]["setpoint"]
+            self._drstatus_abs = device_data[ATTR_DRSTATUS]["powerAbsolute"]
+            self._drstatus_rel = device_data[ATTR_DRSTATUS]["powerRelative"]
+        self._heat_level = device_data[ATTR_OUTPUT_PERCENT_DISPLAY]["percent"]
+        self._heat_source_type = device_data[ATTR_OUTPUT_PERCENT_DISPLAY]["sourceType"]
+        self._operation_mode = device_data[ATTR_SETPOINT_MODE]
+        self._occupancy = device_data[ATTR_OCCUPANCY]
+        self._keypad = device_data[ATTR_WIFI_KEYPAD]
+        self._rssi = device_data[ATTR_WIFI]
+        self._wattage = device_data[ATTR_WIFI_WATTAGE]
+        self._backlight = device_data[ATTR_BACKLIGHT_AUTO_DIM]
+        self._early_start= device_data[ATTR_EARLY_START]
+        self._target_temp_away = device_data[ATTR_ROOM_SETPOINT_AWAY]
+        self._load1 = device_data[ATTR_FLOOR_OUTPUT1]
+        self._floor_mode = device_data[ATTR_FLOOR_MODE]
+        self._floor_sensor_type = device_data[ATTR_FLOOR_SENSOR]
+        self._aux_cycle_length = device_data[ATTR_AUX_CYCLE]
+        self._cycle_length = device_data[ATTR_CYCLE]
+        self._floor_max = device_data[ATTR_FLOOR_MAX]["value"]
+        self._floor_max_status = device_data[ATTR_FLOOR_MAX]["status"]
+        self._floor_min = device_data[ATTR_FLOOR_MIN]["value"]
+        self._floor_min_status = device_data[ATTR_FLOOR_MIN]["status"]
+        self._floor_air_limit = device_data[ATTR_FLOOR_AIR_LIMIT]["value"]
+        self._floor_air_limit_status = device_data[ATTR_FLOOR_AIR_LIMIT]["status"]
+        self._pump_protec_status = device_data[ATTR_PUMP_PROTEC]["status"]
+        if device_data[ATTR_PUMP_PROTEC]["status"] == "on":
+            self._pump_protec_period = device_data[ATTR_PUMP_PROTEC]["frequency"]
+            self._pump_protec_duration = device_data[ATTR_PUMP_PROTEC]["duration"]
         if ATTR_PUMP_PROTEC_DURATION in device_data:
             self._pump_duration_value = device_data[ATTR_PUMP_PROTEC_DURATION]
-        self._floor_air_limit_status = device_data[ATTR_FLOOR_AIR_LIMIT]["status"]
+        if ATTR_FLOOR_AUX in device_data:
+            self._aux_heat = device_data[ATTR_FLOOR_AUX]
+        self._load2 = device_data[ATTR_FLOOR_OUTPUT2]
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        data = super().extra_state_attributes
+        data.update({
+            'pump_duration_value': self._pump_duration_value,
+            'max_air_limit_status': self._floor_air_limit_statu
+        })
+        return data
 
 class Neviweb130WifiFloorThermostat(Neviweb130WifiThermostat):
     """Implementation of Neviweb TH1300WF, TH1325WF, TH1310WF and SRM40 thermostat."""
 
     def __init__(self, data, device_info, name, sku, firmware):
         """Initialize."""
+        super().__init__(data, device_info, name, sku, firmware)
+        self._gfci_status = None
+        self._gfci_alert = None
+        self._code_gfcibase = None
+
+    def update_locals(self, device_data):
+        super().update_locals(device_data)
+        self._gfci_status = device_data[ATTR_GFCI_STATUS]
+        self._gfci_alert = device_data[ATTR_GFCI_ALERT]
+        if ATTR_FLOOR_AIR_LIMIT in device_data:
+            self._floor_air_limit = device_data[ATTR_FLOOR_AIR_LIMIT]["value"]
+            self._floor_air_limit_status = device_data[ATTR_FLOOR_AIR_LIMIT]["status"]
+        if ATTR_FLOOR_MAX in device_data:
+            self._floor_max = device_data[ATTR_FLOOR_MAX]["value"]
+            self._floor_max_status = device_data[ATTR_FLOOR_MAX]["status"]
+        if ATTR_FLOOR_MIN in device_data:
+            self._floor_min = device_data[ATTR_FLOOR_MIN]["value"]
+            self._floor_min_status = device_data[ATTR_FLOOR_MIN]["status"]
+
 
     def update(self):
         if self._activ:

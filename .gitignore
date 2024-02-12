@@ -104,3 +104,6 @@ ENV/
 LICENSE
 *.code-workspace
 .vscode/
+
+.idea/
+

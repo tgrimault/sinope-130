@@ -1414,13 +1414,13 @@ class Neviweb130Thermostat(ClimateEntity):
                     self._code_compensation_sensor = device_error_code["compensationSensor"]
                     self._code_thermal_overload = device_error_code["thermalOverload"]
                 else:
-                    self._temp_status = device_data[ATTR_ERROR_CODE_SET1]["temperatureSensor"]
-                    self._stm_mcu = device_data[ATTR_ERROR_CODE_SET1]["stm_mcu"]
-                    self._thermal_overload = device_data[ATTR_ERROR_CODE_SET1]["thermalOverload"]
-                    self._current_overload = device_data[ATTR_ERROR_CODE_SET1]["currentOverload"]
-                    self._j2connector = device_data[ATTR_ERROR_CODE_SET1]["j2Connector"]
-                    self._j3connector = device_data[ATTR_ERROR_CODE_SET1]["j3Connector"]
-                    self._line_error = device_data[ATTR_ERROR_CODE_SET1]["lineError"]
+                    self._temp_status = device_error_code[ATTR_ERROR_CODE_SET1]["temperatureSensor"]
+                    self._stm_mcu = device_error_code[ATTR_ERROR_CODE_SET1]["stm_mcu"]
+                    self._thermal_overload = device_error_code[ATTR_ERROR_CODE_SET1]["thermalOverload"]
+                    self._current_overload = device_error_code[ATTR_ERROR_CODE_SET1]["currentOverload"]
+                    self._j2connector = device_error_code[ATTR_ERROR_CODE_SET1]["j2Connector"]
+                    self._j3connector = device_error_code[ATTR_ERROR_CODE_SET1]["j3Connector"]
+                    self._line_error = device_error_code[ATTR_ERROR_CODE_SET1]["lineError"]
                 if self._is_floor and not self._is_wifi_floor:
                     self._code_floor_sensor = device_error_code["floorSensor"]
                     self._code_gfcibase = device_error_code["gfciBase"]
@@ -1458,38 +1458,41 @@ class Neviweb130Thermostat(ClimateEntity):
             )
             self._client.reconnect()
         elif error_data == "DVCATTRNSPTD":
-            _LOGGER.warning("Device attribute not supported for %s: %s...(SKU: %s)", self._name, device_data, self._sku)
+            _LOGGER.warning("Device attribute not supported for %s (SKU: %s)", self._name, self._sku)
         elif error_data == "DVCACTNSPTD":
             _LOGGER.warning("Device action not supported for %s...(SKU: %s) Report to maintainer.", self._name,
                             self._sku)
         elif error_data == "DVCCOMMTO":
             _LOGGER.warning(
-                "Device Communication Timeout... The device %s did not respond to the server within the prescribed delay. (SKU: %s)",
+                "Device Communication Timeout... The device %s did not respond to the server within the prescribed "
+                "delay. (SKU: %s)",
                 self._name, self._sku)
         elif error_data == "SVCERR":
-            _LOGGER.warning("Service error, device not available retry later %s: %s...(SKU: %s)", self._name,
-                            device_data, self._sku)
+            _LOGGER.warning("Service error, device not available retry later %s...(SKU: %s)", self._name,
+                            self._sku)
         elif error_data == "DVCBUSY":
-            _LOGGER.warning("Device busy can't reach (neviweb update ?), retry later %s: %s...(SKU: %s)", self._name,
-                            device_data, self._sku)
+            _LOGGER.warning("Device busy can't reach (neviweb update ?), retry later %s: (SKU: %s)", self._name,
+                            self._sku)
         elif error_data == "DVCUNVLB":
-            _LOGGER.warning("Device %s is disconected from Neviweb: %s...(SKU: %s)", self._name, device_data, self._sku)
+            _LOGGER.warning("Device %s is disconected from Neviweb (SKU: %s)", self._name, self._sku)
             _LOGGER.warning("This device %s is de-activated and won't be updated for 20 minutes.", self._name)
             _LOGGER.warning(
-                "You can re-activate device %s with service.neviweb130_set_activation or wait 20 minutes for update to restart or just restart HA.",
+                "You can re-activate device %s with service.neviweb130_set_activation or wait 20 minutes for update "
+                "to restart or just restart HA.",
                 self._name)
             self._activ = False
             self._snooze = time.time()
             self.notify_ha(
-                f"Warning: Received message from Neviweb, device disconnected... Check you log... Neviweb update will be halted for 20 minutes for " + self._name + ", Sku: " + self._sku
+                f"Warning: Received message from Neviweb, device disconnected... Check you log... Neviweb update will "
+                f"be halted for 20 minutes for " + self._name + ", Sku: " + self._sku
             )
         elif error_data == "DVCERR":
-            _LOGGER.warning("Device error for %s, service already activ: %s...(SKU: %s)", self._name, device_data,
+            _LOGGER.warning("Device error for %s, service already active...(SKU: %s)", self._name,
                             self._sku)
         elif error_data == "SVCUNAUTH":
-            _LOGGER.warning("Service not authorised for device %s: %s...(SKU: %s)", self._name, device_data, self._sku)
+            _LOGGER.warning("Service not authorised for device %s...(SKU: %s)", self._name, self._sku)
         else:
-            _LOGGER.warning("Unknown error for %s: %s...(SKU: %s) Report to maintainer.", self._name, device_data,
+            _LOGGER.warning("Unknown error for %s...(SKU: %s) Report to maintainer.", self._name,
                             self._sku)
 
     def notify_ha(self, msg: str, title: str = "Neviweb130 integration " + VERSION):

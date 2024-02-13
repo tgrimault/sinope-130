@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from ..thermostats.base_thermostat import Neviweb130Thermostat
 
 
@@ -18,7 +18,9 @@ class TestNeviweb130Thermostat(unittest.TestCase):
         self.firmware = "Test Firmware"
         self.thermostat = Neviweb130Thermostat(self.data, self.device_info, self.name, self.sku, self.firmware)
 
-    def test_update(self):
+    @patch("neviweb130.thermostats.base_thermostat.Neviweb130Thermostat.get_sensor_error_code")
+    @patch("neviweb130.thermostats.base_thermostat._LOGGER")
+    def test_update(self, mock_logger, mock_get_sensor_error_code):
         mock_device_data = {
             "roomTemperature": {"value": 25.0},
             "roomSetpoint": 22.0,
@@ -67,6 +69,8 @@ class TestNeviweb130Thermostat(unittest.TestCase):
         self.assertEqual(self.thermostat._operation_mode, "mode_value")
         self.assertEqual(self.thermostat._wattage, 1000)
         self.assertTrue(self.thermostat._client.get_device_attributes.called)
+        self.assertTrue(mock_get_sensor_error_code.called)
+        self.assertTrue(mock_logger.debug.called)
 
 
 if __name__ == '__main__':

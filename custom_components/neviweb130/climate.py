@@ -31,15 +31,15 @@ import logging
 
 from homeassistant.const import ATTR_ENTITY_ID
 
-from thermostats.base_thermostat import Neviweb130Thermostat
-from thermostats.double_thermostat import Neviweb130DoubleThermostat
-from thermostats.floor_thermostat import Neviweb130FloorThermostat
-from thermostats.g2_thermostat import Neviweb130G2Thermostat
-from thermostats.hc_thermostat import Neviweb130HcThermostat
-from thermostats.low_voltage_thermostat import Neviweb130LowVoltageThermostat
-from thermostats.low_voltage_wifi_thermostat import Neviweb130LowVoltageWifiThermostat
-from thermostats.wifi_floor_thermostat import Neviweb130WifiFloorThermostat
-from thermostats.wifi_thermostat import Neviweb130WifiThermostat
+from .thermostats.base_thermostat import Neviweb130Thermostat
+from .thermostats.double_thermostat import Neviweb130DoubleThermostat
+from .thermostats.floor_thermostat import Neviweb130FloorThermostat
+from .thermostats.g2_thermostat import Neviweb130G2Thermostat
+from .thermostats.hc_thermostat import Neviweb130HcThermostat
+from .thermostats.low_voltage_thermostat import Neviweb130LowVoltageThermostat
+from .thermostats.low_voltage_wifi_thermostat import Neviweb130LowVoltageWifiThermostat
+from .thermostats.wifi_floor_thermostat import Neviweb130WifiFloorThermostat
+from .thermostats.wifi_thermostat import Neviweb130WifiThermostat
 
 from .const import (
     DOMAIN,

@@ -4,7 +4,9 @@ import logging
 
 import time
 
-from .. import (HOMEKIT_MODE, STAT_INTERVAL, VERSION)
+from ..schema import HOMEKIT_MODE
+from ..schema import STAT_INTERVAL
+from .. import VERSION
 
 from homeassistant.components.climate.const import (
     PRESET_AWAY,

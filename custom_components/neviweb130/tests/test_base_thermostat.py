@@ -20,7 +20,7 @@ class TestNeviweb130Thermostat(unittest.TestCase):
 
     @patch("neviweb130.thermostats.base_thermostat.Neviweb130Thermostat.get_sensor_error_code")
     @patch("neviweb130.thermostats.base_thermostat._LOGGER")
-    def test_update(self, mock_logger, mock_get_sensor_error_code):
+    def test_update_happy_path(self, mock_logger, mock_get_sensor_error_code):
         mock_device_data = {
             "roomTemperature": {"value": 25.0},
             "roomSetpoint": 22.0,
@@ -68,6 +68,41 @@ class TestNeviweb130Thermostat(unittest.TestCase):
         self.assertEqual(self.thermostat._rssi, "rssi_value")
         self.assertEqual(self.thermostat._operation_mode, "mode_value")
         self.assertEqual(self.thermostat._wattage, 1000)
+        self.assertTrue(self.thermostat._client.get_device_attributes.called)
+        self.assertTrue(mock_get_sensor_error_code.called)
+        self.assertTrue(mock_logger.debug.called)
+
+    @patch("neviweb130.thermostats.base_thermostat.Neviweb130Thermostat.get_sensor_error_code")
+    @patch("neviweb130.thermostats.base_thermostat._LOGGER")
+    def test_update_missing_attr(self, mock_logger, mock_get_sensor_error_code):
+        mock_device_data = {
+            "roomTemperature": {"value": 25.0},
+            "roomSetpoint": 22.0,
+            "roomSetpointMin": 18.0,
+            "roomSetpointMax": 30.0,
+            "temperatureFormat": "CELSIUS",
+            "timeFormat": "24h",
+            "roomTemperatureDisplay": "display_value",
+            "config2ndDisplay": "display2_value",
+            "outputPercentDisplay": 50,
+            "lockKeypad": "keypad_value",
+            "backlightAdaptive": "backlight_value",
+            "systemMode": "mode_value",
+            "loadConnected": 1000
+        }
+        self.thermostat._client.get_device_attributes.return_value = mock_device_data
+
+        self.thermostat.update()
+
+        self.assertEqual(self.thermostat._drstatus_active, "off")
+        self.assertEqual(self.thermostat._drstatus_optout, "off")
+        self.assertEqual(self.thermostat._drstatus_setpoint, "off")
+        self.assertEqual(self.thermostat._drstatus_abs, "off")
+        self.assertEqual(self.thermostat._drstatus_rel, "off")
+        self.assertEqual(self.thermostat._drsetpoint_status, "off")
+        self.assertEqual(self.thermostat._drsetpoint_value, 0)
+        self.assertEqual(self.thermostat._cycle_length, 0)
+        self.assertEqual(self.thermostat._rssi, None)
         self.assertTrue(self.thermostat._client.get_device_attributes.called)
         self.assertTrue(mock_get_sensor_error_code.called)
         self.assertTrue(mock_logger.debug.called)

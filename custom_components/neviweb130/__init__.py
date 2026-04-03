@@ -234,71 +234,34 @@ def migrate_entity_unique_id(hass: HomeAssistant):
     hass.data[DOMAIN]["data"].migration_done.set()
 
 
-def setup(hass: HomeAssistant, hass_config: dict[str, Any]) -> bool:
-    """Set up neviweb130."""
-    _LOGGER.warning(STARTUP_MESSAGE)
+def _apply_global_config(hass: HomeAssistant, config: dict) -> None:
+    """Assign all module-level globals and hass.data safe_mode from config."""
+    global SCAN_INTERVAL, HOMEKIT_MODE, IGNORE_MIWI, STAT_INTERVAL, NOTIFY
 
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["translation_cache"] = None
-
-    async def _load_translations(event):
-        """Load translations into cache hass.data"""
-        _LOGGER.debug("Loading neviweb130 translations into hass.data...")
-
-        hass.data[DOMAIN]["translation_cache"] = await async_get_translations(
-            hass,
-            hass.config.language,
-            "config",
-            integrations=["neviweb130"],
-        )
-        hass.data[DOMAIN]["ready"] = True
-
-    # Load translations after HA has started
-    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _load_translations)
-
-    # Initialise request counter
-    init_request_counter(hass)
-
-    try:
-        data = Neviweb130Data(hass, hass_config[DOMAIN])
-        hass.data[DOMAIN]["data"] = data
-        data.current_version = VERSION
-    except IntegrationError as e:
-        # Temporary workaround for sync setup: Avoid verbose traceback in logs. Once async_setup_entry is used,
-        # we can remove the try-except as HomeAssistant will correctly handle the raised exception
-        _LOGGER.error("Neviweb130 initialization failed: %s", e)
-        return False
-
-    # Migrate entity unique_ids from int -> str.
-    hass.add_job(migrate_entity_unique_id, hass)
-
-    global SCAN_INTERVAL
-    SCAN_INTERVAL = hass_config[DOMAIN].get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+    SCAN_INTERVAL = config.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     _LOGGER.debug("Setting scan interval to: %s", SCAN_INTERVAL)
 
-    global HOMEKIT_MODE
-    HOMEKIT_MODE = hass_config[DOMAIN].get(CONF_HOMEKIT_MODE, DEFAULT_HOMEKIT_MODE)
+    HOMEKIT_MODE = config.get(CONF_HOMEKIT_MODE, DEFAULT_HOMEKIT_MODE)
     _LOGGER.debug("Setting Homekit mode to: %s", HOMEKIT_MODE)
 
-    global IGNORE_MIWI
-    IGNORE_MIWI = hass_config[DOMAIN].get(CONF_IGNORE_MIWI, DEFAULT_IGNORE_MIWI)
+    IGNORE_MIWI = config.get(CONF_IGNORE_MIWI, DEFAULT_IGNORE_MIWI)
     _LOGGER.debug("Setting ignore miwi to: %s", IGNORE_MIWI)
 
-    global STAT_INTERVAL
-    STAT_INTERVAL = hass_config[DOMAIN].get(CONF_STAT_INTERVAL, DEFAULT_STAT_INTERVAL)
+    STAT_INTERVAL = config.get(CONF_STAT_INTERVAL, DEFAULT_STAT_INTERVAL)
     _LOGGER.debug("Setting stat interval to: %s", STAT_INTERVAL)
 
-    global NOTIFY
-    NOTIFY = hass_config[DOMAIN].get(CONF_NOTIFY, DEFAULT_NOTIFY)
+    NOTIFY = config.get(CONF_NOTIFY, DEFAULT_NOTIFY)
     _LOGGER.debug("Setting notification method to: %s", NOTIFY)
 
-    hass.data[DOMAIN]["safe_mode"] = hass_config[DOMAIN].get(CONF_SAFE_MODE, DEFAULT_SAFE_MODE)
-
+    hass.data[DOMAIN]["safe_mode"] = config.get(CONF_SAFE_MODE, DEFAULT_SAFE_MODE)
     _LOGGER.debug("Setting safe mode to: %s", hass.data[DOMAIN]["safe_mode"])
+
+
+def _schedule_version_check(hass: HomeAssistant) -> None:
+    """Schedule the async version check via the event loop."""
 
     async def fetch_latest_version():
         url = "https://api.github.com/repos/claudegel/sinope-130/tags"
-
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 if resp.status == 200:
@@ -313,7 +276,6 @@ def setup(hass: HomeAssistant, hass_config: dict[str, Any]) -> bool:
                     except Exception as err:
                         _LOGGER.error("Failed to parse GitHub tags: %s", err)
                         return None
-
         return None
 
     async def async_init_update():
@@ -344,12 +306,37 @@ def setup(hass: HomeAssistant, hass_config: dict[str, Any]) -> bool:
 
     hass.loop.call_soon_threadsafe(hass.async_create_task, async_init_update())
 
-    discovery.load_platform(hass, Platform.CLIMATE, DOMAIN, {}, hass_config)
-    discovery.load_platform(hass, Platform.LIGHT, DOMAIN, {}, hass_config)
-    discovery.load_platform(hass, Platform.SWITCH, DOMAIN, {}, hass_config)
-    discovery.load_platform(hass, Platform.SENSOR, DOMAIN, {}, hass_config)
-    discovery.load_platform(hass, Platform.VALVE, DOMAIN, {}, hass_config)
-    discovery.load_platform(hass, Platform.UPDATE, DOMAIN, {}, hass_config)
+
+def setup(hass: HomeAssistant, hass_config: dict[str, Any]) -> bool:
+    """Set up neviweb130."""
+    _LOGGER.warning(STARTUP_MESSAGE)
+
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN]["translation_cache"] = None
+
+    async def _load_translations(event):
+        hass.data[DOMAIN]["translation_cache"] = await async_get_translations(
+            hass, hass.config.language, "config", integrations=["neviweb130"]
+        )
+        hass.data[DOMAIN]["ready"] = True
+
+    hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _load_translations)
+    init_request_counter(hass)
+
+    try:
+        data = Neviweb130Data(hass, hass_config[DOMAIN])
+        hass.data[DOMAIN]["data"] = data
+        data.current_version = VERSION
+    except IntegrationError as e:
+        _LOGGER.error("Neviweb130 initialization failed: %s", e)
+        return False
+
+    hass.add_job(migrate_entity_unique_id, hass)
+    _apply_global_config(hass, hass_config[DOMAIN])
+    _schedule_version_check(hass)
+
+    for platform in (Platform.CLIMATE, Platform.LIGHT, Platform.SWITCH, Platform.SENSOR, Platform.VALVE, Platform.UPDATE):
+        discovery.load_platform(hass, platform, DOMAIN, {}, hass_config)
 
     return True
 
@@ -550,6 +537,7 @@ class Neviweb130Client:
         self.__get_gateway_data()
 
     def notify_ha(self, msg: str, title: str = "Neviweb130 integration " + VERSION):
+
         """Notify user via HA web frontend."""
         self.hass.services.call(
             PN_DOMAIN,
@@ -561,6 +549,8 @@ class Neviweb130Client:
             blocking=False,
         )
         return True
+
+    # --- Session / Auth ---
 
     def __post_login_page(self) -> None:
         """Login to Neviweb."""
@@ -648,6 +638,8 @@ class Neviweb130Client:
         self._headers = {"Session-Id": data["session"]}
         self._account = str(data["account"]["id"])
         _LOGGER.debug("Successfully logged in to: %s", self._account)
+
+    # --- Network Discovery ---
 
     def __get_network(self) -> None:
         """Get gateway id associated to the desired network."""
@@ -960,96 +952,104 @@ class Neviweb130Client:
                             )
                         )
 
-    def get_device_attributes(self, device_id: str, attributes: list[str]) -> dict[str, Any]:
-        """Get device attributes."""
-        increment_request_counter(self.hass)
-        # Http requests
+    # --- Attribute I/O ---
+
+    def _do_get(self, url: str, **kwargs) -> dict:
+        """Perform a GET request and return the parsed JSON response.
+
+        Handles ReadTimeout and generic exceptions uniformly.
+        Updates session cookies on success.
+        """
         try:
             raw_res = requests.get(
-                DEVICE_DATA_URL + device_id + "/attribute?attributes=" + ",".join(attributes),
+                url,
                 headers=self._headers,
                 cookies=self._cookies,
                 timeout=self._timeout,
+                **kwargs,
             )
-        #            _LOGGER.debug("Received devices data: %s", raw_res.json())
         except requests.exceptions.ReadTimeout:
             return {"errorCode": "ReadTimeout"}
-        except Exception as e:
-            raise PyNeviweb130Error(f"Cannot get device attributes {e}")
+        except OSError as e:
+            raise PyNeviweb130Error(f"GET {url} failed: {e}") from e
         # Update cookies
         if self._cookies is None:
             self._cookies = raw_res.cookies
         else:
             self._cookies.update(raw_res.cookies)
-        # Prepare data
-        data = raw_res.json()
-        if "error" in data:
-            if data["error"]["code"] == "USRSESSEXP":
-                _LOGGER.error(
-                    translated_or_default(
-                        self.hass,
-                        "usr_session",
-                        (
-                            "Warning: Got USRSESSEXP error, Neviweb session expired.\n"
-                            "Set your scan_interval parameter to less than 10 minutes to avoid this...\n"
-                            "Reconnecting..."
-                        ),
-                    )
+        return raw_res.json()
+
+    def _do_put(self, url: str, data: dict, **kwargs) -> dict:
+        """Perform a PUT request and return the parsed JSON response.
+
+        Handles OSError and updates session cookies on success.
+        """
+        try:
+            raw_res = requests.put(
+                url,
+                json=data,
+                headers=self._headers,
+                cookies=self._cookies,
+                timeout=self._timeout,
+                **kwargs,
+            )
+        except OSError as e:
+            raise PyNeviweb130Error(f"PUT {url} failed: {e}") from e
+        # Update cookies
+        if self._cookies is None:
+            self._cookies = raw_res.cookies
+        else:
+            self._cookies.update(raw_res.cookies)
+        return raw_res.json()
+
+    def _handle_response_error(self, response: dict) -> None:
+        """Log a warning when the API response contains a session-expiry error.
+
+        Other error codes are left for callers to handle (e.g. log_error in
+        climate.py).  Session expiry is logged here because it is relevant to
+        every read/write path.
+        """
+        if "error" not in response:
+            return
+        code = response["error"].get("code", "")
+        if code == "USRSESSEXP":
+            _LOGGER.error(
+                translated_or_default(
+                    self.hass,
+                    "usr_session",
+                    (
+                        "Warning: Got USRSESSEXP error, Neviweb session expired.\n"
+                        "Set your scan_interval parameter to less than 10 minutes to avoid this...\n"
+                        "Reconnecting..."
+                    ),
                 )
+            )
+
+    def get_device_attributes(self, device_id: str, attributes: list[str]) -> dict[str, Any]:
+        """Get device attributes."""
+        increment_request_counter(self.hass)
+        data = self._do_get(
+            DEVICE_DATA_URL + device_id + "/attribute?attributes=" + ",".join(attributes)
+        )
+        self._handle_response_error(data)
         return data
 
     def get_device_status(self, device_id: str):
         """Get device status for the GT130."""
         increment_request_counter(self.hass)
-        # Http requests
-        try:
-            raw_res = requests.get(
-                DEVICE_DATA_URL + device_id + "/status",
-                headers=self._headers,
-                cookies=self._cookies,
-                timeout=self._timeout,
-            )
-            _LOGGER.debug("Received devices status: %s", raw_res.json())
-        except requests.exceptions.ReadTimeout:
-            return {"errorCode": "ReadTimeout"}
-        except Exception as e:
-            raise PyNeviweb130Error("Cannot get device status", e)
-        # Prepare data
-        data = raw_res.json()
-        if "error" in data:
-            if data["error"]["code"] == "USRSESSEXP":
-                _LOGGER.error(
-                    translated_or_default(
-                        self.hass,
-                        "usr_session",
-                        (
-                            "Warning: Got USRSESSEXP error, Neviweb session expired.\n"
-                            "Set your scan_interval parameter to less than 10 minutes to avoid this...\n"
-                            "Reconnecting..."
-                        ),
-                    )
-                )
+        data = self._do_get(DEVICE_DATA_URL + device_id + "/status")
+        _LOGGER.debug("Received devices status: %s", data)
+        self._handle_response_error(data)
         return data
 
     def get_neviweb_status(self, location):
         """Get neviweb occupancyMode status."""
         increment_request_counter(self.hass)
-        # Http requests
-        try:
-            raw_res = requests.get(
-                NEVIWEB_LOCATION + str(location) + "/notifications",
-                headers=self._headers,
-                cookies=self._cookies,
-                timeout=self._timeout,
-            )
-            _LOGGER.debug("Received neviweb status: %s", raw_res.json())
-        except requests.exceptions.ReadTimeout:
-            return {"errorCode": "ReadTimeout"}
-        except Exception as e:
-            raise PyNeviweb130Error("Cannot get neviweb status", e)
-        data = raw_res.json()
+        data = self._do_get(NEVIWEB_LOCATION + str(location) + "/notifications")
+        _LOGGER.debug("Received neviweb status: %s", data)
         if "error" in data:
-            if data["error"]["code"] == "USRSESSEXP":
+            code = data["error"].get("code", "")
+            if code == "USRSESSEXP":
                 _LOGGER.error(
                     translated_or_default(
                         self.hass,
@@ -1062,175 +1062,54 @@ class Neviweb130Client:
                     )
                 )
         return data
+        return data
 
     def get_device_alert(self, device_id: str):
         """Get device alert for Sedna valve."""
         increment_request_counter(self.hass)
-        # Http requests
-        try:
-            raw_res = requests.get(
-                DEVICE_DATA_URL + device_id + "/alert",
-                headers=self._headers,
-                cookies=self._cookies,
-                timeout=self._timeout,
-            )
-            _LOGGER.debug("Received devices alert (%s): %s", device_id, raw_res.json())
-        except requests.exceptions.ReadTimeout:
-            return {"errorCode": "ReadTimeout"}
-        except Exception as e:
-            raise PyNeviweb130Error(
-                translated_or_default(
-                    self.hass,
-                    "device_alert",
-                    f"Cannot get device alert for device {device_id}.",
-                    id=device_id,
-                )
-            ) from e
-        # Update cookies
-        if self._cookies is None:
-            self._cookies = raw_res.cookies
-        else:
-            self._cookies.update(raw_res.cookies)
-        # Prepare data
-        data = raw_res.json()
-        if "error" in data:
-            if data["error"]["code"] == "USRSESSEXP":
-                _LOGGER.error(
-                    translated_or_default(
-                        self.hass,
-                        "usr_session",
-                        (
-                            "Warning: Got USRSESSEXP error, Neviweb session expired.\n"
-                            "Set your scan_interval parameter to less than 10 minutes to avoid this...\n"
-                            "Reconnecting..."
-                        ),
-                    )
-                )
+        data = self._do_get(DEVICE_DATA_URL + device_id + "/alert")
+        _LOGGER.debug("Received devices alert (%s): %s", device_id, data)
+        self._handle_response_error(data)
         return data
+
+    # --- Energy Statistics ---
 
     def get_device_monthly_stats(self, device_id: str, HC: bool):
         """Get device power consumption (in Wh) for the last 24 months."""
         increment_request_counter(self.hass)
-        # Http requests
-        if HC:
-            data = DEVICE_DATA_URL + device_id + "/energy/monthly"
-        else:
-            data = DEVICE_DATA_URL + device_id + "/consumption/monthly"
-        _LOGGER.debug("monthly data = %s", data)
-        try:
-            raw_res = requests.get(
-                data,
-                headers=self._headers,
-                cookies=self._cookies,
-                timeout=self._timeout,
-            )
-        except OSError:
-            raise PyNeviweb130Error(
-                translated_or_default(
-                    self.hass,
-                    "energy_stat",
-                    f"Cannot get {'monthly'} stats for device {device_id}.",
-                    param="monthly",
-                    id=device_id,
-                )
-            )
-        # Update cookies
-        if self._cookies is None:
-            self._cookies = raw_res.cookies
-        else:
-            self._cookies.update(raw_res.cookies)
-        # Prepare data
-        data = raw_res.json()
-        # _LOGGER.debug("Monthly_stats data: %s", data)
+        url = DEVICE_DATA_URL + device_id + ("/energy/monthly" if HC else "/consumption/monthly")
+        _LOGGER.debug("monthly data = %s", url)
+        data = self._do_get(url)
         if HC:
             return data
-        else:
-            if "history" in data:
-                return data["history"]
+        if "history" in data:
+            return data["history"]
         _LOGGER.debug("Monthly stat error: %s", data)
         return None
 
     def get_device_daily_stats(self, device_id: str, HC: bool):
         """Get device power consumption (in Wh) for the last 30 days."""
         increment_request_counter(self.hass)
-        # Http requests
-        if HC:
-            data = DEVICE_DATA_URL + device_id + "/energy/daily"
-        else:
-            data = DEVICE_DATA_URL + device_id + "/consumption/daily"
-        _LOGGER.debug("daily data = %s", data)
-        try:
-            raw_res = requests.get(
-                data,
-                headers=self._headers,
-                cookies=self._cookies,
-                timeout=self._timeout,
-            )
-        except OSError:
-            raise PyNeviweb130Error(
-                translated_or_default(
-                    self.hass,
-                    "energy_stat",
-                    f"Cannot get {'daily'} stats for device {device_id}.",
-                    param="daily",
-                    id=device_id,
-                )
-            )
-        # Update cookies
-        if self._cookies is None:
-            self._cookies = raw_res.cookies
-        else:
-            self._cookies.update(raw_res.cookies)
-        # Prepare data
-        data = raw_res.json()
-        # _LOGGER.debug("Daily_stats data: %s", data)
+        url = DEVICE_DATA_URL + device_id + ("/energy/daily" if HC else "/consumption/daily")
+        _LOGGER.debug("daily data = %s", url)
+        data = self._do_get(url)
         if HC:
             return data
-        else:
-            if "history" in data:
-                return data["history"]
+        if "history" in data:
+            return data["history"]
         _LOGGER.debug("Daily stat error: %s", data)
         return None
 
     def get_device_hourly_stats(self, device_id: str, HC: bool):
         """Get device power consumption (in Wh) for the last 24 hours."""
         increment_request_counter(self.hass)
-        # Http requests
-        if HC:
-            data = DEVICE_DATA_URL + device_id + "/energy/hourly"
-        else:
-            data = DEVICE_DATA_URL + device_id + "/consumption/hourly"
-        _LOGGER.debug("hourly data = %s", data)
-        try:
-            raw_res = requests.get(
-                data,
-                headers=self._headers,
-                cookies=self._cookies,
-                timeout=self._timeout,
-            )
-        except OSError:
-            raise PyNeviweb130Error(
-                translated_or_default(
-                    self.hass,
-                    "energy_stat",
-                    f"Cannot get {'hourly'} stats for device {device_id}.",
-                    param="hourly",
-                    id=device_id,
-                )
-            )
-        # Update cookies
-        if self._cookies is None:
-            self._cookies = raw_res.cookies
-        else:
-            self._cookies.update(raw_res.cookies)
-        # Prepare data
-        data = raw_res.json()
-        # _LOGGER.debug("Hourly_stats data: %s", data)
+        url = DEVICE_DATA_URL + device_id + ("/energy/hourly" if HC else "/consumption/hourly")
+        _LOGGER.debug("hourly data = %s", url)
+        data = self._do_get(url)
         if HC:
             return data
-        else:
-            if "history" in data:
-                return data["history"]
+        if "history" in data:
+            return data["history"]
         _LOGGER.debug("Hourly stat error: %s", data)
         return None
 
@@ -1239,52 +1118,13 @@ class Neviweb130Client:
         increment_request_counter(self.hass)
         if self._code is None:
             raise ValueError("self._code is None")
-        try:
-            raw_res = requests.get(
-                NEVIWEB_WEATHER + self._code,
-                headers=self._headers,
-                cookies=self._cookies,
-                timeout=self._timeout,
-            )
-        except OSError:
-            raise PyNeviweb130Error(
-                translated_or_default(
-                    self.hass,
-                    "weather_data",
-                    f"Cannot get Neviweb weather and icon for code {self._code}.",
-                    code=self._code,
-                )
-            )
-        # Update cookies
-        if self._cookies is None:
-            self._cookies = raw_res.cookies
-        else:
-            self._cookies.update(raw_res.cookies)
-        # Prepare data
-        data = raw_res.json()
-        # _LOGGER.debug("weather data: %s", data)
+        data = self._do_get(NEVIWEB_WEATHER + self._code)
         return data
 
     def get_device_sensor_error(self, device_id: str):
         """Get device error code status."""
         increment_request_counter(self.hass)
-        # Http requests
-        try:
-            raw_res = requests.get(
-                DEVICE_DATA_URL + device_id + "/attribute?attributes=errorCodeSet1",
-                headers=self._headers,
-                cookies=self._cookies,
-                timeout=self._timeout,
-            )
-        except OSError:
-            raise PyNeviweb130Error("Cannot get device error code status...")
-        # Update cookies
-        if self._cookies is None:
-            self._cookies = raw_res.cookies
-        else:
-            self._cookies.update(raw_res.cookies)
-        # Prepare data
-        data = raw_res.json()
+        data = self._do_get(DEVICE_DATA_URL + device_id + "/attribute?attributes=errorCodeSet1")
         if "errorCodeSet1" in data:
             return data["errorCodeSet1"]
         _LOGGER.debug("Error code status data: %s", data)
@@ -2277,48 +2117,16 @@ class Neviweb130Client:
     def set_device_attributes(self, device_id: str, data: dict[str, Any]):
         """Set devices attributes."""
         increment_request_counter(self.hass)
+        url = DEVICE_DATA_URL + device_id + "/attribute"
         result = 1
         while result < 4:
-            try:
-                resp = requests.put(
-                    DEVICE_DATA_URL + device_id + "/attribute",
-                    json=data,
-                    headers=self._headers,
-                    cookies=self._cookies,
-                    timeout=self._timeout,
-                )
-                _LOGGER.debug(
-                    "Requests = %s%s%s %s",
-                    DEVICE_DATA_URL,
-                    device_id,
-                    "/attribute",
-                    data,
-                )
-                _LOGGER.debug("Data = %s", data)
-                _LOGGER.debug("Requests response = %s", resp.status_code)
-                _LOGGER.debug("Json Data received= %s", resp.json())
-                _LOGGER.debug("Content = %s", resp.content)
-                _LOGGER.debug("Text = %s", resp.text)
-
-                if "error" not in resp.json():
-                    break
-
-                result += 1
-                _LOGGER.debug(
-                    "Service error received: %s, resending requests %s",
-                    resp.json(),
-                    result,
-                )
-            except OSError:
-                raise PyNeviweb130Error(
-                    translated_or_default(
-                        self.hass,
-                        "set_attribute",
-                        f"Cannot set device {device_id} attributes: {data}.",
-                        id=device_id,
-                        data=data,
-                    )
-                )
+            resp = self._do_put(url, data)
+            _LOGGER.debug("Requests = %s %s", url, data)
+            _LOGGER.debug("Json Data received= %s", resp)
+            if "error" not in resp:
+                break
+            result += 1
+            _LOGGER.debug("Service error received: %s, resending requests %s", resp, result)
 
     def post_neviweb_status(self, location: int | str, mode: str):
         """Send post requests to Neviweb for global occupancy mode"""

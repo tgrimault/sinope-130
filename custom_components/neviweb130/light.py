@@ -22,7 +22,7 @@ import logging
 import time
 from datetime import date, datetime, timezone
 from threading import Lock
-from typing import override
+from typing import Any, override
 
 from homeassistant.components.light import ATTR_BRIGHTNESS, ATTR_BRIGHTNESS_PCT, ColorMode, LightEntity
 from homeassistant.components.persistent_notification import DOMAIN as PN_DOMAIN
@@ -119,6 +119,32 @@ IMPLEMENTED_DEVICE_MODEL = (
 )
 
 
+def _build_light_entities(
+    gateway_data: list, group_name: str, client: Any
+) -> list:
+    """Instantiate light entities for one gateway data list."""
+    result = []
+    for device_info in gateway_data:
+        if not (
+            "signature" in device_info
+            and "model" in device_info["signature"]
+            and device_info["signature"]["model"] in IMPLEMENTED_DEVICE_MODEL
+        ):
+            continue
+        device_name = "{} {}".format(group_name, device_info["name"])
+        device_sku = device_info["sku"]
+        sv = device_info["signature"]["softVersion"]
+        device_firmware = "{}.{}.{}".format(sv["major"], sv["middle"], sv["minor"])
+        model = device_info["signature"]["model"]
+        if model in DEVICE_MODEL_LIGHT or model in DEVICE_MODEL_SED_LIGHT:
+            result.append(Neviweb130Light(device_info, device_name, device_sku, device_firmware, client))
+        elif model in DEVICE_MODEL_DIMMER or model in DEVICE_MODEL_SED_DIMMER:
+            result.append(Neviweb130Dimmer(device_info, device_name, device_sku, device_firmware, client))
+        elif model in DEVICE_MODEL_NEW_DIMMER or model in DEVICE_MODEL_SED_NEW_DIMMER:
+            result.append(Neviweb130NewDimmer(device_info, device_name, device_sku, device_firmware, client))
+    return result
+
+
 async def async_setup_platform(
     hass,
     config,
@@ -135,98 +161,22 @@ async def async_setup_platform(
 
     # Loop through all clients (supports multi-account)
     for client in data.neviweb130_clients:
-        default_name = client.default_group_name("light")
-        default_name_2 = client.default_group_name("light", 2)
-        default_name_3 = client.default_group_name("light", 3)
-
-        # Process gateway_data for this client
-        for device_info in client.gateway_data:
-            if (
-                "signature" in device_info
-                and "model" in device_info["signature"]
-                and device_info["signature"]["model"] in IMPLEMENTED_DEVICE_MODEL
-            ):
-                device_name = "{} {}".format(default_name, device_info["name"])
-                device_sku = device_info["sku"]
-                device_firmware = "{}.{}.{}".format(
-                    device_info["signature"]["softVersion"]["major"],
-                    device_info["signature"]["softVersion"]["middle"],
-                    device_info["signature"]["softVersion"]["minor"],
-                )
-                if (
-                    device_info["signature"]["model"] in DEVICE_MODEL_LIGHT
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_LIGHT
-                ):
-                    entities.append(Neviweb130Light(device_info, device_name, device_sku, device_firmware, client))
-                elif (
-                    device_info["signature"]["model"] in DEVICE_MODEL_DIMMER
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_DIMMER
-                ):
-                    entities.append(Neviweb130Dimmer(device_info, device_name, device_sku, device_firmware, client))
-                elif (
-                    device_info["signature"]["model"] in DEVICE_MODEL_NEW_DIMMER
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_NEW_DIMMER
-                ):
-                    entities.append(Neviweb130NewDimmer(device_info, device_name, device_sku, device_firmware, client))
-        for device_info in client.gateway_data2:
-            if (
-                "signature" in device_info
-                and "model" in device_info["signature"]
-                and device_info["signature"]["model"] in IMPLEMENTED_DEVICE_MODEL
-            ):
-                device_name = "{} {}".format(default_name_2, device_info["name"])
-                device_sku = device_info["sku"]
-                device_firmware = "{}.{}.{}".format(
-                    device_info["signature"]["softVersion"]["major"],
-                    device_info["signature"]["softVersion"]["middle"],
-                    device_info["signature"]["softVersion"]["minor"],
-                )
-                if (
-                    device_info["signature"]["model"] in DEVICE_MODEL_LIGHT
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_LIGHT
-                ):
-                    entities.append(Neviweb130Light(device_info, device_name, device_sku, device_firmware, client))
-                elif (
-                    device_info["signature"]["model"] in DEVICE_MODEL_DIMMER
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_DIMMER
-                ):
-                    entities.append(Neviweb130Dimmer(device_info, device_name, device_sku, device_firmware, client))
-                elif (
-                    device_info["signature"]["model"] in DEVICE_MODEL_NEW_DIMMER
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_NEW_DIMMER
-                ):
-                    entities.append(Neviweb130NewDimmer(device_info, device_name, device_sku, device_firmware, client))
-        for device_info in client.gateway_data3:
-            if (
-                "signature" in device_info
-                and "model" in device_info["signature"]
-                and device_info["signature"]["model"] in IMPLEMENTED_DEVICE_MODEL
-            ):
-                device_name = "{} {}".format(default_name_3, device_info["name"])
-                device_sku = device_info["sku"]
-                device_firmware = "{}.{}.{}".format(
-                    device_info["signature"]["softVersion"]["major"],
-                    device_info["signature"]["softVersion"]["middle"],
-                    device_info["signature"]["softVersion"]["minor"],
-                )
-                if (
-                    device_info["signature"]["model"] in DEVICE_MODEL_LIGHT
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_LIGHT
-                ):
-                    entities.append(Neviweb130Light(device_info, device_name, device_sku, device_firmware, client))
-                elif (
-                    device_info["signature"]["model"] in DEVICE_MODEL_DIMMER
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_DIMMER
-                ):
-                    entities.append(Neviweb130Dimmer(device_info, device_name, device_sku, device_firmware, client))
-                elif (
-                    device_info["signature"]["model"] in DEVICE_MODEL_NEW_DIMMER
-                    or device_info["signature"]["model"] in DEVICE_MODEL_SED_NEW_DIMMER
-                ):
-                    entities.append(Neviweb130NewDimmer(device_info, device_name, device_sku, device_firmware, client))
+        entities.extend(_build_light_entities(
+            client.gateway_data, client.default_group_name("light"), client
+        ))
+        entities.extend(_build_light_entities(
+            client.gateway_data2, client.default_group_name("light", 2), client
+        ))
+        entities.extend(_build_light_entities(
+            client.gateway_data3, client.default_group_name("light", 3), client
+        ))
 
     async_add_entities(entities, True)
+    _register_light_services(hass, entities)
 
+
+def _register_light_services(hass: Any, entities: list) -> None:
+    """Register all light services with Home Assistant."""
     entity_map: dict[str, Neviweb130Light] | None = None
     _entity_map_lock = Lock()
 
@@ -519,110 +469,110 @@ class Neviweb130Light(LightEntity):
         self._wattage = 0
         self._wattage_status = None
 
-    def update(self):
-        if self._active:
-            """Get the latest data from neviweb and update the state."""
-            WATT_ATTRIBUTE = [ATTR_LIGHT_WATTAGE, ATTR_ERROR_CODE_SET1]
-            start = time.time()
-            attributes = UPDATE_ATTRIBUTES + WATT_ATTRIBUTE
-            safe_mode = self.hass.data[DOMAIN]["safe_mode"]
+    def _get_attributes_list(self):
+        """Return the attribute list to fetch. Subclasses override for their extras."""
+        return UPDATE_ATTRIBUTES + [ATTR_LIGHT_WATTAGE, ATTR_ERROR_CODE_SET1]
 
-            if self._is_light:
-                if safe_mode == self._id:
-                    device_data = safe_get_device_attributes(
-                        self.hass,
-                        self._client,
-                        self._id,
-                        attributes,
-                        _LOGGER,
-                        device_sku=self._sku,
-                        device_model=self._device_model,
-                        firmware=self._firmware,
-                    )
-                else:
-                    device_data = self._client.get_device_attributes(self._id, attributes)
-            else:
-                if safe_mode == self._id:
-                    device_data = safe_get_device_attributes(
-                        self.hass,
-                        self._client,
-                        self._id,
-                        ATTR_ONOFF,
-                        _LOGGER,
-                        device_sku=self._sku,
-                        device_model=self._device_model,
-                        firmware=self._firmware,
-                    )
-                else:
-                    device_data = self._client.get_device_attributes(self._id, ATTR_ONOFF)
-            end = time.time()
-            elapsed = round(end - start, 3)
-            _LOGGER.debug("Updating %s (%s sec): %s", self._name, elapsed, device_data)
-            if "error" not in device_data:
-                if "errorCode" not in device_data:
-                    self._onoff = device_data[ATTR_ONOFF]
-                    if self._is_light:
-                        self._wattage = device_data[ATTR_LIGHT_WATTAGE]["value"]
-                        self._wattage_status = device_data[ATTR_LIGHT_WATTAGE]["status"]
-                        if ATTR_ERROR_CODE_SET1 in device_data and len(device_data[ATTR_ERROR_CODE_SET1]) > 0:
-                            if device_data[ATTR_ERROR_CODE_SET1]["raw"] != 0:
-                                self._error_code = device_data[ATTR_ERROR_CODE_SET1]["raw"]
-                                code = str(device_data[ATTR_ERROR_CODE_SET1]["raw"])
-                                self.notify_ha(
-                                    translated_or_default(
-                                        self.hass,
-                                        "error_code",
-                                        (
-                                            f"Warning: Neviweb Device error code detected: {code} for device: \n"
-                                            f"{self._name}, ID: {self._id}, Sku: {self._sku}. {''}"
-                                        ),
-                                        code=code,
-                                        message="",
-                                        name=self._name,
-                                        id=self._id,
-                                        sku=self._sku,
-                                    )
-                                )
-                        self._keypad = device_data[ATTR_KEYPAD]
-                        self._timer = device_data[ATTR_TIMER]
-                        self._rssi = device_data[ATTR_RSSI]
-                        self._led_on = (
-                            str(device_data[ATTR_LED_ON_INTENSITY])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["red"])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["green"])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["blue"])
-                        )
-                        self._led_off = (
-                            str(device_data[ATTR_LED_OFF_INTENSITY])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["red"])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["green"])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["blue"])
-                        )
-                else:
-                    _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
-            else:
-                self.log_error(device_data["error"]["code"])
-            if self._is_light:
-                self.do_stat(start)
+    def _get_fallback_attributes(self):
+        """Return the minimal attribute list used when not the primary device type."""
+        return ATTR_ONOFF
+
+    def _is_primary_type(self):
+        """Return True when this instance is the primary device type (not a fallback)."""
+        return self._is_light
+
+    def _fetch_attributes(self, attributes) -> dict:
+        """Fetch device attributes, using safe mode when configured."""
+        safe_mode = self.hass.data[DOMAIN]["safe_mode"]
+        if self._is_primary_type():
+            if safe_mode == self._id:
+                return safe_get_device_attributes(
+                    self.hass, self._client, self._id, attributes, _LOGGER,
+                    device_sku=self._sku, device_model=self._device_model, firmware=self._firmware,
+                )
+            return self._client.get_device_attributes(self._id, attributes)
         else:
-            if time.time() - self._snooze > SNOOZE_TIME:
-                self._active = True
-                if NOTIFY == "notification" or NOTIFY == "both":
+            fallback = self._get_fallback_attributes()
+            if safe_mode == self._id:
+                return safe_get_device_attributes(
+                    self.hass, self._client, self._id, fallback, _LOGGER,
+                    device_sku=self._sku, device_model=self._device_model, firmware=self._firmware,
+                )
+            return self._client.get_device_attributes(self._id, fallback)
+
+    def _parse_common_state(self, data: dict) -> None:
+        """Assign common state fields from device data."""
+        self._onoff = data[ATTR_ONOFF]
+        if self._is_light:
+            self._wattage = data[ATTR_LIGHT_WATTAGE]["value"]
+            self._wattage_status = data[ATTR_LIGHT_WATTAGE]["status"]
+            self._keypad = data[ATTR_KEYPAD]
+            self._timer = data[ATTR_TIMER]
+            self._rssi = data[ATTR_RSSI]
+            self._led_on = (
+                str(data[ATTR_LED_ON_INTENSITY]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["red"]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["green"]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["blue"])
+            )
+            self._led_off = (
+                str(data[ATTR_LED_OFF_INTENSITY]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["red"]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["green"]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["blue"])
+            )
+            if ATTR_ERROR_CODE_SET1 in data and len(data[ATTR_ERROR_CODE_SET1]) > 0:
+                if data[ATTR_ERROR_CODE_SET1]["raw"] != 0:
+                    self._error_code = data[ATTR_ERROR_CODE_SET1]["raw"]
+                    code = str(data[ATTR_ERROR_CODE_SET1]["raw"])
                     self.notify_ha(
                         translated_or_default(
-                            self.hass,
-                            "update_restarted",
-                            f"Warning: Neviweb Device update restarted for {self._name}, Sku: {self._sku}.",
-                            name=self._name,
-                            sku=self._sku,
+                            self.hass, "error_code",
+                            (
+                                f"Warning: Neviweb Device error code detected: {code} for device: \n"
+                                f"{self._name}, ID: {self._id}, Sku: {self._sku}. {''}"
+                            ),
+                            code=code, message="", name=self._name, id=self._id, sku=self._sku,
                         )
                     )
+
+    def _handle_error(self, device_data: dict) -> bool:
+        """Return True if an error was found and handled, False for clean data."""
+        if "error" in device_data:
+            self.log_error(device_data["error"]["code"])
+            return True
+        if "errorCode" in device_data:
+            _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
+            return True
+        return False
+
+    def _handle_snooze(self) -> None:
+        """Re-activate polling after the snooze period has elapsed."""
+        if time.time() - self._snooze > SNOOZE_TIME:
+            self._active = True
+            if NOTIFY == "notification" or NOTIFY == "both":
+                self.notify_ha(
+                    translated_or_default(
+                        self.hass, "update_restarted",
+                        f"Warning: Neviweb Device update restarted for {self._name}, Sku: {self._sku}.",
+                        name=self._name, sku=self._sku,
+                    )
+                )
+
+    def update(self):
+        """Get the latest data from neviweb and update the state."""
+        if not self._active:
+            self._handle_snooze()
+            return
+        start = time.time()
+        attributes = self._get_attributes_list()
+        device_data = self._fetch_attributes(attributes)
+        elapsed = round(time.time() - start, 3)
+        _LOGGER.debug("Updating %s (%s sec): %s", self._name, elapsed, device_data)
+        if not self._handle_error(device_data):
+            self._parse_common_state(device_data)
+        if self._is_primary_type():
+            self.do_stat(start)
 
     @property
     def supported_color_modes(self):
@@ -1088,116 +1038,50 @@ class Neviweb130Light(LightEntity):
 class Neviweb130Dimmer(Neviweb130Light):
     """Implementation of a neviweb dimmer, DM2500ZB, DM2500ZB-G2."""
 
-    def update(self):
-        if self._active:
-            """Get the latest data from neviweb and update the state."""
-            WATT_ATTRIBUTE = [ATTR_LIGHT_WATTAGE, ATTR_ERROR_CODE_SET1]
-            start = time.time()
-            attributes = UPDATE_ATTRIBUTES + WATT_ATTRIBUTE
-            safe_mode = self.hass.data[DOMAIN]["safe_mode"]
+    def _get_attributes_list(self):
+        return UPDATE_ATTRIBUTES + [ATTR_LIGHT_WATTAGE, ATTR_ERROR_CODE_SET1]
 
-            if self._is_dimmer:
-                if safe_mode == self._id:
-                    device_data = safe_get_device_attributes(
-                        self.hass,
-                        self._client,
-                        self._id,
-                        attributes,
-                        _LOGGER,
-                        device_sku=self._sku,
-                        device_model=self._device_model,
-                        firmware=self._firmware,
-                    )
-                else:
-                    device_data = self._client.get_device_attributes(self._id, attributes)
-            else:
-                if safe_mode == self._id:
-                    device_data = safe_get_device_attributes(
-                        self.hass,
-                        self._client,
-                        self._id,
-                        ATTR_ONOFF,
-                        _LOGGER,
-                        device_sku=self._sku,
-                        device_model=self._device_model,
-                        firmware=self._firmware,
-                    )
-                else:
-                    device_data = self._client.get_device_attributes(self._id, ATTR_ONOFF)
-            end = time.time()
-            elapsed = round(end - start, 3)
-            _LOGGER.debug("Updating %s (%s sec): %s", self._name, elapsed, device_data)
-            if "error" not in device_data:
-                if "errorCode" not in device_data:
-                    self._onoff = device_data[ATTR_ONOFF]
-                    if self._is_dimmer:
-                        if ATTR_INTENSITY in device_data:
-                            self._brightness_pct = (
-                                round(device_data[ATTR_INTENSITY]) if device_data[ATTR_INTENSITY] is not None else 0
-                            )
-                        self._intensity_min = device_data[ATTR_INTENSITY_MIN]
-                        self._wattage = device_data[ATTR_LIGHT_WATTAGE]["value"]
-                        self._wattage_status = device_data[ATTR_LIGHT_WATTAGE]["status"]
-                        if ATTR_ERROR_CODE_SET1 in device_data and len(device_data[ATTR_ERROR_CODE_SET1]) > 0:
-                            if device_data[ATTR_ERROR_CODE_SET1]["raw"] != 0:
-                                self._error_code = device_data[ATTR_ERROR_CODE_SET1]["raw"]
-                                code = str(device_data[ATTR_ERROR_CODE_SET1]["raw"])
-                                self.notify_ha(
-                                    translated_or_default(
-                                        self.hass,
-                                        "error_code",
-                                        (
-                                            "Warning: Neviweb Device error code detected: "
-                                            f"{code} for device: {self._name},"
-                                            f"ID: {self._id}, Sku: {self._sku}. {''}"
-                                        ),
-                                        code=code,
-                                        message="",
-                                        name=self._name,
-                                        id=self._id,
-                                        sku=self._sku,
-                                    )
-                                )
-                        self._keypad = device_data[ATTR_KEYPAD]
-                        self._timer = device_data[ATTR_TIMER]
-                        self._rssi = device_data[ATTR_RSSI]
-                        self._led_on = (
-                            str(device_data[ATTR_LED_ON_INTENSITY])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["red"])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["green"])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["blue"])
-                        )
-                        self._led_off = (
-                            str(device_data[ATTR_LED_OFF_INTENSITY])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["red"])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["green"])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["blue"])
-                        )
-                else:
-                    _LOGGER.warning("Error reading device %s: (%s)", self._name, device_data)
-            else:
-                self.log_error(device_data["error"]["code"])
-            if self._is_dimmer:
-                self.do_stat(start)
-        else:
-            if time.time() - self._snooze > SNOOZE_TIME:
-                self._active = True
-                if NOTIFY == "notification" or NOTIFY == "both":
+    def _is_primary_type(self):
+        return self._is_dimmer
+
+    def _parse_common_state(self, data: dict) -> None:
+        """Assign dimmer state fields from device data."""
+        self._onoff = data[ATTR_ONOFF]
+        if self._is_dimmer:
+            if ATTR_INTENSITY in data:
+                self._brightness_pct = round(data[ATTR_INTENSITY]) if data[ATTR_INTENSITY] is not None else 0
+            self._intensity_min = data[ATTR_INTENSITY_MIN]
+            self._wattage = data[ATTR_LIGHT_WATTAGE]["value"]
+            self._wattage_status = data[ATTR_LIGHT_WATTAGE]["status"]
+            if ATTR_ERROR_CODE_SET1 in data and len(data[ATTR_ERROR_CODE_SET1]) > 0:
+                if data[ATTR_ERROR_CODE_SET1]["raw"] != 0:
+                    self._error_code = data[ATTR_ERROR_CODE_SET1]["raw"]
+                    code = str(data[ATTR_ERROR_CODE_SET1]["raw"])
                     self.notify_ha(
                         translated_or_default(
-                            self.hass,
-                            "update_restarted",
-                            f"Warning: Neviweb Device update restarted for {self._name}, Sku: {self._sku}.",
-                            name=self._name,
-                            sku=self._sku,
+                            self.hass, "error_code",
+                            (
+                                f"Warning: Neviweb Device error code detected: {code} for device: "
+                                f"{self._name}, ID: {self._id}, Sku: {self._sku}. {''}"
+                            ),
+                            code=code, message="", name=self._name, id=self._id, sku=self._sku,
                         )
                     )
+            self._keypad = data[ATTR_KEYPAD]
+            self._timer = data[ATTR_TIMER]
+            self._rssi = data[ATTR_RSSI]
+            self._led_on = (
+                str(data[ATTR_LED_ON_INTENSITY]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["red"]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["green"]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["blue"])
+            )
+            self._led_off = (
+                str(data[ATTR_LED_OFF_INTENSITY]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["red"]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["green"]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["blue"])
+            )
 
     @property
     def extra_state_attributes(self):
@@ -1243,121 +1127,51 @@ class Neviweb130Dimmer(Neviweb130Light):
 class Neviweb130NewDimmer(Neviweb130Light):
     """Implementation of a neviweb new dimmer DM2550ZB, DM2550ZB-G2."""
 
-    def update(self):
-        if self._active:
-            """Get the latest data from neviweb and update the state."""
-            WATT_ATTRIBUTE = [
-                ATTR_PHASE_CONTROL,
-                ATTR_KEY_DOUBLE_UP,
-                ATTR_WATTAGE_INSTANT,
-                ATTR_ERROR_CODE_SET1,
-            ]
-            start = time.time()
-            attributes = UPDATE_ATTRIBUTES + WATT_ATTRIBUTE
-            safe_mode = self.hass.data[DOMAIN]["safe_mode"]
+    def _get_attributes_list(self):
+        return UPDATE_ATTRIBUTES + [ATTR_PHASE_CONTROL, ATTR_KEY_DOUBLE_UP, ATTR_WATTAGE_INSTANT, ATTR_ERROR_CODE_SET1]
 
-            if self._is_new_dimmer:
-                if safe_mode == self._id:
-                    device_data = safe_get_device_attributes(
-                        self.hass,
-                        self._client,
-                        self._id,
-                        attributes,
-                        _LOGGER,
-                        device_sku=self._sku,
-                        device_model=self._device_model,
-                        firmware=self._firmware,
-                    )
-                else:
-                    device_data = self._client.get_device_attributes(self._id, attributes)
-            else:
-                if safe_mode == self._id:
-                    device_data = safe_get_device_attributes(
-                        self.hass,
-                        self._client,
-                        self._id,
-                        ATTR_ONOFF,
-                        _LOGGER,
-                        device_sku=self._sku,
-                        device_model=self._device_model,
-                        firmware=self._firmware,
-                    )
-                else:
-                    device_data = self._client.get_device_attributes(self._id, ATTR_ONOFF)
-            end = time.time()
-            elapsed = round(end - start, 3)
-            _LOGGER.debug("Updating %s (%s sec): %s", self._name, elapsed, device_data)
-            if "error" not in device_data:
-                if "errorCode" not in device_data:
-                    self._onoff = device_data[ATTR_ONOFF]
-                    if self._is_new_dimmer:
-                        if ATTR_INTENSITY in device_data:
-                            self._brightness_pct = (
-                                round(device_data[ATTR_INTENSITY]) if device_data[ATTR_INTENSITY] is not None else 0
-                            )
-                        self._intensity_min = device_data[ATTR_INTENSITY_MIN]
-                        self._phase_control = device_data[ATTR_PHASE_CONTROL]
-                        self._double_up = device_data[ATTR_KEY_DOUBLE_UP]
-                        self._keypad = device_data[ATTR_KEYPAD]
-                        self._wattage = device_data[ATTR_WATTAGE_INSTANT]
-                        self._timer = device_data[ATTR_TIMER]
-                        if ATTR_ERROR_CODE_SET1 in device_data and len(device_data[ATTR_ERROR_CODE_SET1]) > 0:
-                            if device_data[ATTR_ERROR_CODE_SET1]["raw"] != 0:
-                                self._error_code = device_data[ATTR_ERROR_CODE_SET1]["raw"]
-                                code = str(device_data[ATTR_ERROR_CODE_SET1]["raw"])
-                                self.notify_ha(
-                                    translated_or_default(
-                                        self.hass,
-                                        "error_code",
-                                        (
-                                            f"Warning: Neviweb Device error code detected: {code} for device: "
-                                            f"{self._name}, ID: {self._id}, Sku: {self._sku}. {''}"
-                                        ),
-                                        code=code,
-                                        name=self._name,
-                                        id=self._id,
-                                        sku=self._sku,
-                                        message="",
-                                    )
-                                )
-                        self._rssi = device_data[ATTR_RSSI]
-                        self._led_on = (
-                            str(device_data[ATTR_LED_ON_INTENSITY])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["red"])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["green"])
-                            + ","
-                            + str(device_data[ATTR_LED_ON_COLOR]["blue"])
-                        )
-                        self._led_off = (
-                            str(device_data[ATTR_LED_OFF_INTENSITY])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["red"])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["green"])
-                            + ","
-                            + str(device_data[ATTR_LED_OFF_COLOR]["blue"])
-                        )
-                else:
-                    _LOGGER.warning("Error reading device %s: (%s)", self._name, device_data)
-            else:
-                self.log_error(device_data["error"]["code"])
-            if self._is_new_dimmer:
-                self.do_stat(start)
-        else:
-            if time.time() - self._snooze > SNOOZE_TIME:
-                self._active = True
-                if NOTIFY == "notification" or NOTIFY == "both":
+    def _is_primary_type(self):
+        return self._is_new_dimmer
+
+    def _parse_common_state(self, data: dict) -> None:
+        """Assign new-dimmer state fields from device data."""
+        self._onoff = data[ATTR_ONOFF]
+        if self._is_new_dimmer:
+            if ATTR_INTENSITY in data:
+                self._brightness_pct = round(data[ATTR_INTENSITY]) if data[ATTR_INTENSITY] is not None else 0
+            self._intensity_min = data[ATTR_INTENSITY_MIN]
+            self._phase_control = data[ATTR_PHASE_CONTROL]
+            self._double_up = data[ATTR_KEY_DOUBLE_UP]
+            self._keypad = data[ATTR_KEYPAD]
+            self._wattage = data[ATTR_WATTAGE_INSTANT]
+            self._timer = data[ATTR_TIMER]
+            if ATTR_ERROR_CODE_SET1 in data and len(data[ATTR_ERROR_CODE_SET1]) > 0:
+                if data[ATTR_ERROR_CODE_SET1]["raw"] != 0:
+                    self._error_code = data[ATTR_ERROR_CODE_SET1]["raw"]
+                    code = str(data[ATTR_ERROR_CODE_SET1]["raw"])
                     self.notify_ha(
                         translated_or_default(
-                            self.hass,
-                            "update_restarted",
-                            f"Warning: Neviweb Device update restarted for {self._name}, Sku: {self._sku}.",
-                            name=self._name,
-                            sku=self._sku,
+                            self.hass, "error_code",
+                            (
+                                f"Warning: Neviweb Device error code detected: {code} for device: "
+                                f"{self._name}, ID: {self._id}, Sku: {self._sku}. {''}"
+                            ),
+                            code=code, name=self._name, id=self._id, sku=self._sku, message="",
                         )
                     )
+            self._rssi = data[ATTR_RSSI]
+            self._led_on = (
+                str(data[ATTR_LED_ON_INTENSITY]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["red"]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["green"]) + ","
+                + str(data[ATTR_LED_ON_COLOR]["blue"])
+            )
+            self._led_off = (
+                str(data[ATTR_LED_OFF_INTENSITY]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["red"]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["green"]) + ","
+                + str(data[ATTR_LED_OFF_COLOR]["blue"])
+            )
 
     @property
     def extra_state_attributes(self):

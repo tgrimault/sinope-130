@@ -537,7 +537,7 @@ class Neviweb130Thermostat(ClimateEntity):
         else:
             FIRMWARE_SPECIAL = [ATTR_ROOM_TEMP_DISPLAY]
         attributes = UPDATE_ATTRIBUTES + HEAT_ATTRIBUTES + FIRMWARE_SPECIAL
-        _LOGGER.debug("4.2.3, attributes updated for %s: %s", self._name, attributes)
+        _LOGGER.debug("4.2.3, updated attributes for %s: %s", self._name, attributes)
         safe_mode = self.hass.data[DOMAIN]["safe_mode"]
         if safe_mode == self._id:
             from custom_components.neviweb130.climate import safe_get_device_attributes as _safe_get
@@ -638,7 +638,9 @@ class Neviweb130Thermostat(ClimateEntity):
         if not self._handle_error(device_data):
             self._parse_dr_state(device_data)
             self._parse_common_state(device_data)
-        self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+        status = neviweb_status.get(ATTR_OCCUPANCY)
+        if isinstance(status, str):
+            self._occupancy_mode = status
         self.do_stat(start)
         self.get_sensor_error_code()
         self.get_weather()

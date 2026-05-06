@@ -462,7 +462,7 @@ class Neviweb130TankSensor(Neviweb130Sensor):
 
 
 class Neviweb130GatewaySensor(Neviweb130Sensor):
-    """Implementation of a Neviweb gateway sensor."""
+    """Implementation of a Neviweb gateway sensor, GT130, GT4220WF."""
 
     def __init__(self, device_info, name, device_type, sku, firmware, location, client):
         """Initialize."""
@@ -570,10 +570,23 @@ class NeviwebDailyRequestSensor(Entity):
         return "mdi:counter"
 
     @property
+    def state_class(self):
+        return "total"
+
+    @property
+    def device_class(self):
+        return "measurement"
+
+    @property
+    def unit_of_measurement(self):
+        return "requests"
+
+    @property
     def extra_state_attributes(self):
         data = self.hass.data[DOMAIN]["request_data"]
         return {
             "date": data["date"],
+            "safety_limit": 25000,
             "limit": 30000,
         }
 

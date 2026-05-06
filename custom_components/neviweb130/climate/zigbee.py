@@ -180,7 +180,9 @@ class Neviweb130G2Thermostat(Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()
@@ -377,7 +379,9 @@ class Neviweb130FloorThermostat(FloorMixin, Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()
@@ -594,7 +598,9 @@ class Neviweb130LowThermostat(LowVoltageMixin, Neviweb130Thermostat):
                     _LOGGER.warning("Error updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()
@@ -772,7 +778,9 @@ class Neviweb130DoubleThermostat(Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()

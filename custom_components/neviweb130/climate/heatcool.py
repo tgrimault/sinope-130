@@ -325,7 +325,9 @@ class Neviweb130HcThermostat(Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()
@@ -433,12 +435,9 @@ class Neviweb130HeatCoolThermostat(HeatCoolMixin, Neviweb130Thermostat):
         self._aux_heat_min_time_on = None
         self._aux_heat_source_type = None
         self._aux_heat_start_delay = None
-        self._aux_interstage_delay = None
-        self._aux_interstage_min_delay = None
         self._reversing_valve_polarity = "cooling"
         self._backlight_auto_dim = None
         self._cool_cycle_length = 0
-        self._cool_interstage_delay = None
         self._cool_interstage_min_delay = None
         self._cool_max = 36
         self._cool_min = 16
@@ -455,7 +454,6 @@ class Neviweb130HeatCoolThermostat(HeatCoolMixin, Neviweb130Thermostat):
         self._fan_filter_remain = None
         self._heat_cool = None
         self._heat_installation_type = None
-        self._heat_interstage_delay = None
         self._heat_interstage_min_delay = None
         self._heat_level_source_type = "heating"
         self._heat_min_time_off = None
@@ -579,7 +577,7 @@ class Neviweb130HeatCoolThermostat(HeatCoolMixin, Neviweb130Thermostat):
             """Get the latest data from Neviweb and update the state."""
             start = time.time()
             attributes = (
-                UPDATE_HEAT_COOL_ATTRIBUTES + HC_ATTRIBUTES + HC_EXTRA + HC_CONFIG + HC_SPECIAL_FIRMWARE + HC_43
+                UPDATE_HEAT_COOL_ATTRIBUTES + HC_ATTRIBUTES + HC_SPECIAL_FIRMWARE + HC_EXTRA + HC_CONFIG + HC_43
             )
             _LOGGER.debug("Updated attributes for %s (firmware %s): %s", self._name, self._firmware, attributes)
             safe_mode = self.hass.data[DOMAIN]["safe_mode"]
@@ -751,7 +749,9 @@ class Neviweb130HeatCoolThermostat(HeatCoolMixin, Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()
@@ -1223,7 +1223,7 @@ class Neviweb130HeatCoolThermostat(HeatCoolMixin, Neviweb130Thermostat):
         if self._device_model == 6727:
             data.update(
                 {
-                    "heat_interstage_min_delay": self._aux_interstage_min_delay,
+                    "heat_interstage_min_delay": self._heat_interstage_min_delay,
                     "cool_interstage_min_delay": self._cool_interstage_min_delay,
                     "hvac_input1_function": self._hvac_input1_function,
                     #  "scheduled_peak_status": self._scheduled_peak_status,

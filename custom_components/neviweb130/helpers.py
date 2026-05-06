@@ -426,7 +426,7 @@ def safe_get_device_attributes(
                     device_data[attr] = None
                     continue
 
-                # 4. Cas improbable : attr absent → log mais ne rien ajouter
+                # 4. Improbable case : absent attr → log but add nothing
                 logger.warning(
                     "Attribute '%s' ignored or unsupported for device %s (%s, %s, %s)",
                     attr,
@@ -440,16 +440,6 @@ def safe_get_device_attributes(
             except Exception as e_attr:
                 # 5. if we get DVCATTRNSPTD → this attribute is not supported, add None
                 if "DVCATTRNSPTD" in str(e_attr):
-                    logger.warning(
-                        "Attribute '%s' not supported for device %s (%s, %s, %s): %s",
-                        attr,
-                        device_id,
-                        sku_info,
-                        model_info,
-                        fw_info,
-                        e_attr,
-                    )
-
                     logger.warning(
                         "Attribute '%s' not supported for device %s (%s, %s, %s): %s",
                         attr,

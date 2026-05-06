@@ -72,6 +72,7 @@ Here is a list of currently supported devices. Basically, it's everything that c
   - Sinopé TH1134CR Sinopé Evo 4000w Line voltage thermostat lite
   - Sinopé TH1143WF Wi-Fi 3000W two wires connection, color screen
   - Sinopé TH1144WF WI-Fi 4000W two wires connection, color screen
+  - Sinopé TH1145WF Wi-Fi ? two wires connection, color screen
   - Sinopé TH1300WF Wi-Fi 3600W floor thermostat
   - Sinopé TH1310WF Wi-Fi 3600W floor thermostat
   - Sinopé TH1325WF Wi-Fi 3600W floor thermostat
@@ -92,6 +93,7 @@ Here is a list of currently supported devices. Basically, it's everything that c
 - **Wi-Fi Heatpump controller**:
   - Sinopé HP6000WF-MA for Ouellet Convectair heat pump with Midea connector
   - Sinopé HP6000WF-GE for Ouellet heat pump with Gree connector
+  - Sinopé HP6000WF-TCL for Runtru/Ameristar heat pump
 - **Zigbee lighting**:
   - Sinopé SW2500ZB Light switch
   - Sinopé SW2500ZB-G2 Light switch
@@ -655,7 +657,10 @@ template:
 ## Localisation
 Neviweb130 is now translated in French for the errors and notifications messages. The translation is done automatically based
 on your HA configuration for language. Now French and English are supported. Any language can be added by translating 
-en.json file located in translations directory into other language. 
+en.json file located in translations directory into other language.
+
+If you modify translations files you will need to not only reload HA but also restart the HA server to force HA to reload
+translations properly.
 
 ## Statistic for Sedna flow meeter
 Seven attributes are added to track water usage for Sedna valve. They are shown as m³ (cubic meeter) which is what 

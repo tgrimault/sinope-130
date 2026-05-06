@@ -241,7 +241,9 @@ class Neviweb130HPThermostat(HeatPumpMixin, Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.get_sensor_error_code()
             self.get_weather()
         else:
@@ -525,7 +527,9 @@ class Neviweb130WifiHPThermostat(HeatPumpMixin, Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.get_sensor_error_code()
             self.get_weather()
         else:

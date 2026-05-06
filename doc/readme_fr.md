@@ -72,6 +72,7 @@ Voici une liste des appareils actuellement pris en charge. En gros, c'est tout c
   - Sinopé TH1134CR, Thermostat à tension de ligne – édition Lite Sinopé Evo 4000w
   - Sinopé TH1143WF, thermostat à deux fils, écran couleur Wi-Fi 3000W
   - Sinopé TH1144WF, thermostat à deux fils, écran couleur WI-Fi 4000W
+  - Sinopé TH1145WF, thermostat à deux fils, écran couleur Wi-Fi ?
   - Sinopé TH1300WF, thermostat au sol Wi-Fi 3600W
   - Sinopé TH1310WF, thermostat au sol Wi-Fi 3600W
   - Sinopé TH1325WF, thermostat au sol Wi-Fi 3600W
@@ -92,6 +93,7 @@ Voici une liste des appareils actuellement pris en charge. En gros, c'est tout c
 - **Contrôleur de pompe à chaleur Wi-Fi**:
   - Sinopé HP6000WF-MA, pour les thermopompes Ouellet, Convectair avec connecteur Midea
   - Sinopé HP6000WF-GE, pour les thermopompes Ouellet avec connecteur Gree
+  - Sinopé HP6000WF-TCL, pour les thermopompes Runtru/Ameristar
 - **éclairage Zigbee**:
   - Sinopé SW2500ZB, Interrupteur
   - Sinopé SW2500ZB-G2, Interrupteur nouvelle génération
@@ -673,6 +675,9 @@ Neviweb130 est désormais traduit en français pour les messages d'erreurs et de
 automatiquement en fonction de votre configuration HA pour la langue. Désormais, le français et l'anglais sont pris 
 en charge. N'importe quelle langue peut être ajoutée en traduisant le fichier en.json situé dans le répertoire 
 'translations' vers une autre langue.
+
+Si vous modifiez les fichiers de traduction, vous devrez non seulement recharger HA, mais aussi redémarrer le serveur
+HA pour forcer HA à recharger correctement les traductions.
 
 ## Statistique pour le capteur de debit Sedna
 Sept attributs sont ajoutés pour suivre la consommation d'eau de la valve Sedna. Ils sont affichés en m³ (mètre cube), ce qui correspond aux 

@@ -211,7 +211,9 @@ class Neviweb130WifiThermostat(Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()
@@ -422,7 +424,9 @@ class Neviweb130WifiLiteThermostat(Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             if (
                 self._sku != "TH1133WF"
                 and self._sku != "TH1133CR"
@@ -619,7 +623,9 @@ class Neviweb130ColorWifiThermostat(Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()
@@ -838,7 +844,9 @@ class Neviweb130LowWifiThermostat(LowVoltageMixin, Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             self.do_stat(start)
             self.get_sensor_error_code()
             self.get_weather()
@@ -1068,7 +1076,9 @@ class Neviweb130WifiFloorThermostat(FloorMixin, Neviweb130Thermostat):
                     _LOGGER.warning("Error in updating device %s: (%s)", self._name, device_data)
             else:
                 self.log_error(device_data["error"]["code"])
-            self._occupancy_mode = neviweb_status[ATTR_OCCUPANCY]
+            status = neviweb_status.get(ATTR_OCCUPANCY)
+            if isinstance(status, str):
+                self._occupancy_mode = status
             if self._sku != "FLP55" and self._sku != "PS120_240WF":
                 self.do_stat(start)
             self.get_sensor_error_code()
